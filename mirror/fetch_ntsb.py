@@ -1,37 +1,39 @@
-import requests
+import asyncio
+from playwright.async_api import async_playwright
 import pandas as pd
-from io import StringIO
 
-URL = "https://www.ntsb.gov/_layouts/15/NTSB.Aviation/DownloadCSV.aspx"
+NTSB_URL = "https://www.ntsb.gov/Pages/AviationQuery.aspx"
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/123.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/csv,application/csv;q=0.9,*/*;q=0.8",
-}
+OUTPUT = "data/ntsb_accidents.csv"
 
-def fetch_ntsb():
-    print("[NTSB] Fetching CSV export…")
-    r = requests.get(URL, timeout=30, headers=HEADERS)
-    r.raise_for_status()
-    text = r.text
+async def fetch_ntsb_csv():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
 
-    # Detect HTML response (NTSB sometimes returns HTML instead of CSV)
-    if "<html" in text.lower() or "<!doctype" in text.lower():
-        raise RuntimeError("NTSB returned HTML instead of CSV")
+        print("[NTSB] Loading page…")
+        await page.goto(NTSB_URL, timeout=120000)
 
-    return text
+        print("[NTSB] Waiting for Download CSV button…")
+        await page.wait_for_selector("a#downloadCsv", timeout=120000)
+
+        print("[NTSB] Clicking Download CSV…")
+        async with page.expect_download() as download_info:
+            await page.click("a#downloadCsv")
+
+        download = await download_info.value
+        path = await download.path()
+
+        print("[NTSB] Reading downloaded CSV…")
+        df = pd.read_csv(path, low_memory=False)
+
+        df.to_csv(OUTPUT, index=False)
+        print(f"[NTSB] Saved {OUTPUT}")
+
+        await browser.close()
 
 def main():
-    csv_text = fetch_ntsb()
-
-    df = pd.read_csv(StringIO(csv_text), low_memory=False)
-
-    df.to_csv("data/ntsb_accidents.csv", index=False)
-    print("[NTSB] Saved data/ntsb_accidents.csv")
+    asyncio.run(fetch_ntsb_csv())
 
 if __name__ == "__main__":
     main()
