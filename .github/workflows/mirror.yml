@@ -3,7 +3,7 @@ name: Mirror NTSB Accident Data
 on:
   schedule:
     - cron: "0 3 * * 1"   # every Monday at 03:00 UTC
-  workflow_dispatch:       # allow manual runs
+  workflow_dispatch:
 
 jobs:
   update:
@@ -21,7 +21,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install requests pandas
+        run: |
+          pip install playwright pandas
+          playwright install chromium
 
       - name: Run mirror script
         run: python mirror/fetch_ntsb.py
