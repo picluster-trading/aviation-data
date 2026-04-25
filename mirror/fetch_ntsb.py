@@ -6,7 +6,17 @@ URL = "https://www.ntsb.gov/_layouts/15/NTSB.Aviation/DownloadCSV.aspx"
 
 def fetch_ntsb():
     print("[NTSB] Fetching CSV export…")
-    r = requests.get(URL, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/123.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/csv,application/csv;q=0.9,*/*;q=0.8",
+    }
+
+    r = requests.get(URL, timeout=30, headers=headers)
     r.raise_for_status()
     return r.text
 
